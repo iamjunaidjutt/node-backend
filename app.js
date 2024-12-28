@@ -6,6 +6,8 @@ const mongoose = require("mongoose");
 const errorHandler = require('./middlewares/error-handler.middleware');
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
+const passport = require("./config/passport-local.config");
+const isAuthorized = require('./middlewares/auth.middleware');
 require("dotenv").config();
 
 
@@ -44,25 +46,22 @@ app.use(session({
 }))
 
 
+// ? Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+
 // ? routes
-app.get("/", (req, res) => {
-    if (req.session.viewCount) {
-        req.session.viewCount += 1;
-    } else {
-        req.session.viewCount = 1;
-    }
+app.get("/", isAuthorized('user'),(req, res) => {
+    return res.send(`Hello ${req.user.username}!`);
+});
 
-    res.send(`<h1>You have visited that page ${req.session.viewCount} times.</h1>`);
-})
-
-app.get("/admin", (req, res) => {
-    res.send("Admin page");
-})
+app.use('/auth', require('./routes/auth.routes'));
 
 
 // ? not found route
 app.all("*", (req, res) => {
-    res.send("Not Found");
+    res.status(404).send("404 Not Found");
 })
 
 
