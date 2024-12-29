@@ -1,13 +1,11 @@
 const express = require('express');
-const reqLogger = require('./utils/req-logger');
+const reqLogger = require('./middlewares/req-logger.middleware');
 const { default: helmet } = require('helmet');
 const compression = require('compression');
 const mongoose = require("mongoose");
 const errorHandler = require('./middlewares/error-handler.middleware');
-const session = require("express-session");
-const MongoStore = require("connect-mongo");
-const passport = require("./config/passport-local.config");
-const isAuthorized = require('./middlewares/auth.middleware');
+const passport = require("./config/passport-jwt.config");
+const {isAuthorized, authenticateJWT} = require('./middlewares/auth.middleware');
 require("dotenv").config();
 
 
@@ -28,31 +26,14 @@ const mongoUri = process.env.DB_URI;
 mongoose.connect(mongoUri);
 
 const db = mongoose.connection;
-const sessionStore = new MongoStore({
-    mongoUrl: mongoUri,
-    collection: 'sessions'
-})
-
-
-// ? session config for express-session
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    store: sessionStore,
-    cookie: {
-        maxAge: 1000 * 60 * 60 * 24
-    }
-}))
 
 
 // ? Initialize Passport
 app.use(passport.initialize());
-app.use(passport.session());
 
 
 // ? routes
-app.get("/", isAuthorized('user'),(req, res) => {
+app.get("/", authenticateJWT,isAuthorized('user'),(req, res) => {
     return res.send(`Hello ${req.user.username}!`);
 });
 
